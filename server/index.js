@@ -6,7 +6,7 @@ const { Server } = require("socket.io");
 const cors = require('cors');
 const io = new Server(server, {
   cors: {
-    origin:"http://localhost:3003",
+    origin:NODE_ENV == 'production' ? 'https://task-manager-rho-dusky-72.vercel.app' : 'http://localhost:3003',
     methods: ["GET", "POST"]
   }
 });

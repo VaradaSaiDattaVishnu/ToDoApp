@@ -1,6 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 
+const API_BASE_URL = "https://task-manager-rho-dusky-72.vercel.app";
+
 const taskSlice = createSlice({
   name: "task",
   initialState: {
@@ -27,7 +29,7 @@ const taskSlice = createSlice({
 
       state.items = state.items.filter((task) => task.id !== action.payload);
       const deleteTaskIndb = async () => {
-        await axios.post("http://localhost:3003/deleteTask", {
+        await axios.post(`${API_BASE_URL}/deleteTask`, {
           id,
           tasksLength: task.s ? completedCount : pendingCount,
           s: task.s,
@@ -45,7 +47,7 @@ const taskSlice = createSlice({
 
       try {
         const updateTaskIndb = async () => {
-          await axios.post("http://localhost:3003/updateTask", {
+          await axios.post(`${API_BASE_URL}/updateTask`, {
             id,
             updatedTask,
           });
@@ -81,7 +83,7 @@ const taskSlice = createSlice({
       // console.log(s)
 
       const updateTasksInDb = async () => {
-        await axios.post("http://localhost:3003/updateTasksInDb", {
+        await axios.post(`${API_BASE_URL}/updateTasksInDb`, {
           id,
           s,
           startIndex,

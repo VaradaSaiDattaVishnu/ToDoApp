@@ -30,6 +30,9 @@ import { increaseCount, setPendingCount } from "../utils/CountSlice";
 
 const Main = () => {
 
+  const API_BASE_URL = "https://task-manager-rho-dusky-72.vercel.app";
+
+
 
   const [vis, setvis] = useState(false)
   const [priority, setPriority] = useState(null);
@@ -91,7 +94,7 @@ const Main = () => {
     const fetchData = async () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       // eslint-disable-next-line
-      const response = await axios.post("http://localhost:3003/getTasks", {
+      const response = await axios.post(`${API_BASE_URL}/getTasks`, {
         hello: "hi iam posting to server",
       });
 
@@ -212,7 +215,7 @@ const Main = () => {
                       new Date(taskDeadline).getTime() > Date.now()
                     ) {
                        await axios.post(
-                        "http://localhost:3003/saveTask",
+                        `${API_BASE_URL}/saveTask`,
                         {
                           details: taskDetails,
                           deadline: taskDeadline.$d.toString(),

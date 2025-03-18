@@ -1,131 +1,161 @@
-const express = require('express')
-const app = express()
-const port = 3003
-var cors = require('cors')
-var bodyParser = require('body-parser');
+const express = require('express');
+const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const cors = require('cors');
+const io = new Server(server, {
+  cors: {
+    origin:  process.env.NODE_ENV === "production" 
+    ? "https://task-manager-rho-dusky-72.vercel.app" 
+    : "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+const bodyParser = require('body-parser');
 const { MongoClient } = require("mongodb");
-// Connection URI
-const uri =
-  "mongodb://127.0.0.1:27017/mydb?writeConcern=majority";
-const client = new MongoClient(uri);
+require('dotenv').config()
 
-async function run() {
+const uri = process.env.MONGODB_URI 
+
+const client = new MongoClient(uri);
+let tasksCollection;
+
+// Connect to MongoDB
+async function connectToMongo() {
   try {
     await client.connect();
     await client.db("admin").command({ ping: 1 });
-    console.log("Database connected successsfully");
-  }
-  catch(e){
-    console.log(e)
+    console.log("Database connected successfully");
+    
+    // Set up the collection reference
+    tasksCollection = client.db('tododb').collection('tasks');
+    
+    // Set up change stream to monitor for changes
+    const changeStream = tasksCollection.watch();
+    
+    // When a change occurs in MongoDB, emit to all connected clients
+    changeStream.on('change', (change) => {
+      io.emit('tasksUpdated', change);
+    });
+    
+  } catch(e) {
+    console.error("Failed to connect to MongoDB", e);
   }
 }
-run()
 
-app.use(cors())
+// Connect to MongoDB
+connectToMongo();
+
+// Middleware
+app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-
-app.get('/', (req, res) => {
-  res.send('Hi')
-})
-
-
-
-app.post('/getTasks', async (req, res) => {
-  try{
-  const tasks = await client.db('mydb').collection('tasks').find().toArray()
-  res.json(tasks)
-  }catch(err){
-      console.log(err);
-  }
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log('A client connected');
   
-})
+  socket.on('disconnect', () => {
+    console.log('A client disconnected');
+  });
+});
+
+// Routes
+app.get('/', (req, res) => {
+  res.send('Todo API Running');
+});
+
+app.get('/getTasks', async (req, res) => {
+  try {
+    const tasks = await tasksCollection.find().toArray();
+    res.json(tasks);
+  } catch(err) {
+    console.log(err);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
 
 app.post('/updateTask', async(req, res) => {
-  
-    const {id, updatedTask} = req.body
-    const response = await client.db('mydb').collection('tasks').findOneAndUpdate({id}, {$set: updatedTask}, { returnDocument: 'before' }) 
-  res.json({ after: updatedTask, before: response })
-})
-
-
+  try {
+    const {id, updatedTask} = req.body;
+    const response = await tasksCollection.findOneAndUpdate(
+      {id}, 
+      {$set: updatedTask}, 
+      { returnDocument: 'before' }
+    );
+    res.json({ after: updatedTask, before: response });
+  } catch(err) {
+    console.log(err);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
 
 app.post('/saveTask', async (req, res) => {
-  const dataToSave = req.body
-  const {id, details, s, p, des, deadline, pindex, overdue} = dataToSave
-  await client.db('mydb').collection('tasks').insertOne({
-      id, details, p, s, des, deadline, pindex, overdue
-  })
-  const taskResponse = await client.db('mydb').collection('tasks').findOne({id: id}, {_id: 0})
-  res.json(taskResponse)
-})
+  try {
+    const dataToSave = req.body;
+    const {id, details, s, p, des, deadline, pindex, overdue} = dataToSave;
+    await tasksCollection.insertOne({ 
+      id, details, p, s, des, deadline, pindex, overdue 
+    });
+    const taskResponse = await tasksCollection.findOne({id: id}, {_id: 0});
+    res.json(taskResponse);
+  } catch(err) {
+    console.log(err);
+    res.status(500).json({ error: 'Failed to save task' });
+  }
+});
 
 app.post('/updateTasksInDb', async (req, res) => {
-
-  const {startIndex, endIndex, id, s} = req.body
-  
-  if(!s){
-
-    if(endIndex > startIndex) {
-      for(let i = startIndex + 1; i<= endIndex; i++ ) {
-        let newIndex = `${i-1}`
-        await client.db('mydb').collection('tasks').updateOne({pindex: `${i}`, s: false}, {$set: {pindex: newIndex}})
+  try {
+    const {startIndex, endIndex, id, s} = req.body;
+    if(!s) {
+      if(endIndex > startIndex) {
+        for(let i = startIndex + 1; i <= endIndex; i++) {
+          let newIndex = `${i-1}`;
+          await tasksCollection.updateOne(
+            {pindex: `${i}`, s: false}, 
+            {$set: {pindex: newIndex}}
+          );
+        }
+        await tasksCollection.updateOne(
+          {id}, 
+          {$set: {pindex: `${endIndex}`}}
+        );
+      } else {
+        for(let i = startIndex - 1; i >= endIndex; i--) {
+          let newIndex = `${i+1}`;
+          await tasksCollection.updateOne(
+            {pindex: `${i}`, s: false}, 
+            {$set: {pindex: newIndex}}
+          );
+        }
+        await tasksCollection.updateOne(
+          {id}, 
+          {$set: {pindex: `${endIndex}`}}
+        );
       }
-      await client.db('mydb').collection('tasks').updateOne({id }, {$set: {pindex: `${endIndex}`}})
-   }
-  
-   else{
-    for(let i = startIndex - 1 ; i >= endIndex; i-- )
-      { let newIndex = `${i+1}`
-       let response =  await client.db('mydb').collection('tasks').updateOne({pindex: `${i}`, s: false}, {$set: {pindex: newIndex}})
-      }
-      await client.db('mydb').collection('tasks').updateOne({id }, {$set: {pindex: `${endIndex}`}})
-   }
-
+    }
+    res.json({ success: true });
+  } catch(err) {
+    console.log(err);
+    res.status(500).json({ error: 'Failed to update tasks order' });
   }
-
-  res.json('huehuehue')
-
-
- 
-
-})
+});
 
 app.post('/deleteTask', async (req, res) => {
+  try {
+    const {id} = req.body;
+    const response = await tasksCollection.deleteOne({id: id});
+    res.json({response});
+  } catch(err) {
+    console.log(err);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
 
-
-  const {id, tasksLength,s} = req.body
-  // let indexS = await client.db('mydb').collection('tasks').findOne({id: id })
-  
-
-
-  const response = await client.db('mydb').collection('tasks').deleteOne({id: id})
-  res.json({response})
-
-//   if(s){
-//     let index = Number(indexS.cindex)
-//   for(let i = index; i <= tasksLength; i++) {
-//     await client.db('mydb').collection('tasks').updateOne({cindex: `${i+1}`, s: true}, {$set: {cindex: `${i}`}})
-//   }
-// }
-// else if(!s){
-//   let index = Number(indexS.pindex)
-
-//   for(let i = index; i <= tasksLength; i++) {
-//     await client.db('mydb').collection('tasks').updateOne({pindex: `${i+1}`, s: false}, {$set: {pindex: `${i}`}})
-//   }
-// }
-
-
-})
-
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
-
-
-
-// await client.db('mydb').collection('tasks').updateMany({pindex: {$gt : 3}}, {$inc : {pIndex : -
-//   1}}})
+// Start server
+const PORT = process.env.PORT || 3003;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

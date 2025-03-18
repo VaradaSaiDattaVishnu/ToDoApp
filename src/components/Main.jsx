@@ -30,7 +30,7 @@ import { increaseCount, setPendingCount } from "../utils/CountSlice";
 
 const Main = () => {
 
-  const API_BASE_URL = "https://todoappserver-ten.vercel.app/api";
+  const API_BASE_URL = "https://todoappserver-ten.vercel.app";
 
   const [vis, setvis] = useState(false)
   const [priority, setPriority] = useState(null);

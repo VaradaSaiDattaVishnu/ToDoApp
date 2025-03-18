@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_BASE_URL = "https://task-manager-rho-dusky-72.vercel.app";
+const API_BASE_URL = "http://localhost:3003";
 
 const taskSlice = createSlice({
   name: "task",

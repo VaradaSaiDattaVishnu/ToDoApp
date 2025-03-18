@@ -89,7 +89,7 @@ const Main = () => {
 
   const fetchData = async () => {
 
-    const response = await axios.get(`${API_BASE_URL}/getTasks`, {
+    const response = await axios.post(`${API_BASE_URL}/getTasks`, {
       hello: "hi iam posting to server",
     });
 

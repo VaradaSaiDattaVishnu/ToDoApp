@@ -6,9 +6,7 @@ const { Server } = require("socket.io");
 const cors = require('cors');
 const io = new Server(server, {
   cors: {
-    origin:  process.env.NODE_ENV === "production" 
-    ? "https://task-manager-rho-dusky-72.vercel.app" 
-    : "http://localhost:3000",
+    origin:"http://localhost:3003",
     methods: ["GET", "POST"]
   }
 });
@@ -52,7 +50,6 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Socket.io connection
 io.on('connection', (socket) => {
   console.log('A client connected');
   
@@ -61,12 +58,12 @@ io.on('connection', (socket) => {
   });
 });
 
-// Routes
+
 app.get('/', (req, res) => {
   res.send('Todo API Running');
 });
 
-app.get('/getTasks', async (req, res) => {
+app.post('/getTasks', async (req, res) => {
   try {
     const tasks = await tasksCollection.find().toArray();
     res.json(tasks);

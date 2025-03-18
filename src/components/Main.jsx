@@ -32,8 +32,6 @@ const Main = () => {
 
   const API_BASE_URL = "https://task-manager-rho-dusky-72.vercel.app";
 
-
-
   const [vis, setvis] = useState(false)
   const [priority, setPriority] = useState(null);
   const [taskDetails, setTaskDetails] = useState(null);
@@ -89,24 +87,24 @@ const Main = () => {
     prevOpen.current = open;
   }, [open]);
 
+  const fetchData = async () => {
+
+    const response = await axios.get(`${API_BASE_URL}/getTasks`, {
+      hello: "hi iam posting to server",
+    });
+
+    response.data.forEach((task) => {
+      task.deadline = (new Date(task.deadline)).toString();
+    });
+
+    dispatch(setTask(response.data));
+    dispatch(sortPendingTasks());
+    setFlag(true);
+   
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      // eslint-disable-next-line
-      const response = await axios.post(`${API_BASE_URL}/getTasks`, {
-        hello: "hi iam posting to server",
-      });
 
-      response.data.forEach((task) => {
-        task.deadline = (new Date(task.deadline)).toString();
-      });
-
-      dispatch(setTask(response.data));
-      dispatch(sortPendingTasks());
-      setFlag(true);
-     
-    };
     fetchData();
   }, []);
 

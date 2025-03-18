@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:3003";
+const API_BASE_URL = "https://todoappserver-ten.vercel.app/api";
 
 const taskSlice = createSlice({
   name: "task",

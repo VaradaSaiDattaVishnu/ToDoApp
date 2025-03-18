@@ -59,9 +59,9 @@ io.on('connection', (socket) => {
 });
 
 
-app.get('/', (req, res) => {
-  res.send('Todo API Running');
-});
+// app.get('/', (req, res) => {
+//   res.send('Todo API Running');
+// });
 
 app.post('/getTasks', async (req, res) => {
   try {
